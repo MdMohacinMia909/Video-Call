@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple WebRTC Manual</title>
+  <style>
+    video { width: 45%; margin: 10px; border: 1px solid #ccc; }
+    textarea { width: 90%; height: 100px; }
+  </style>
+</head>
+<body>
+  <h2>📹 Simple WebRTC Manual</h2>
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video><br>
+
+  <button onclick="createOffer()">Create Offer</button><br>
+  <textarea id="offerOutput" placeholder="Your Offer will appear here"></textarea><br>
+
+  <textarea id="offerInput" placeholder="Paste Offer here"></textarea><br>
+  <button onclick="createAnswer()">Create Answer</button><br>
+  <textarea id="answerOutput" placeholder="Your Answer will appear here"></textarea><br>
+
+  <textarea id="answerInput" placeholder="Paste Answer here"></textarea><br>
+  <button onclick="addAnswer()">Add Answer</button><br>
+
+  <script>
+    let localStream;
+    let peer = new RTCPeerConnection();
+
+    // Local video stream
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        localStream = stream;
+        document.getElementById("localVideo").srcObject = stream;
+        stream.getTracks().forEach(track => peer.addTrack(track, stream));
+      });
+
+    // Remote video stream
+    peer.ontrack = event => {
+      document.getElementById("remoteVideo").srcObject = event.streams[0];
+    };
+
+    // Show ICE candidates in offer/answer
+    peer.onicecandidate = e => {
+      if (e.candidate) return;
+      console.log("ICE gathering complete.");
+      // ICE complete, so offer/answer ready
+      if (peer.localDescription.type === "offer") {
+        document.getElementById("offerOutput").value = JSON.stringify(peer.localDescription);
+      } else {
+        document.getElementById("answerOutput").value = JSON.stringify(peer.localDescription);
+      }
+    };
+
+    // Create Offer
+    async function createOffer() {
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+    }
+
+    // Create Answer
+    async function createAnswer() {
+      const offer = JSON.parse(document.getElementById("offerInput").value);
+      await peer.setRemoteDescription(offer);
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+    }
+
+    // Add Answer (on offer side)
+    async function addAnswer() {
+      const answer = JSON.parse(document.getElementById("answerInput").value);
+      await peer.setRemoteDescription(answer);
+    }
+  </script>
+</body>
+</html>
